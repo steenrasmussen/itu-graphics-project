@@ -1,0 +1,14 @@
+//
+// Created by steen on 09-05-2024.
+//
+
+#ifndef ITU_GRAPHICS_PROGRAMMING_MESHLET_H
+#define ITU_GRAPHICS_PROGRAMMING_MESHLET_H
+
+
+class Meshlet {
+
+};
+
+
+#endif //ITU_GRAPHICS_PROGRAMMING_MESHLET_H
