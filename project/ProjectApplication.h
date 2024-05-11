@@ -55,7 +55,7 @@ private:
     DearImGui m_imGui;
 
     GpuInfo m_gpuInfo;
-    bool m_isMeshShadersSupported;
+    bool m_isMeshShadersSupported{};
     MeshShaderPropterties meshShaderProperties = {};
 
     std::shared_ptr<ShaderProgram> shaderProgramPtr;
@@ -69,8 +69,13 @@ private:
     bool m_cameraEnablePressed;
 
     MeshletModel m_model;
-    ShaderProgram::Location m_worldMatrixLocation;
-    ShaderProgram::Location m_viewProjMatrixLocation;
+    ShaderProgram::Location m_worldMatrixLocation{-1};
+    ShaderProgram::Location m_viewProjMatrixLocation{-1};
+
+    ShaderProgram::Location m_cullingCameraPositionLocation{-1};
+
+    Camera m_cullingCamera;
+    glm::vec3 m_cullingCameraPosition;
 };
 
 

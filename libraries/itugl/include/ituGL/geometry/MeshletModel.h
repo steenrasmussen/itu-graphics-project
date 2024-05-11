@@ -9,18 +9,27 @@
 #include <vector>
 #include "meshoptimizer.h"
 #include "glm/vec4.hpp"
+#include "glm/vec3.hpp"
 
 constexpr size_t maxVertices = 64;
 constexpr size_t maxTriangles = 124;
-constexpr float coneWeight = 0.0f;
+constexpr float coneWeight = .2f;
 
-//constexpr unsigned int maxTaskShaderWorkgroup
+struct bounds_struct
+{
+    glm::vec3 center;
+    float radius;
+    glm::vec3 normal;
+    float angle;
+};
+
 
 enum BufferIndex {
     VERTICES = 0,
     MESHLET_VERTICES,
     MESHLET_TRIANGLES,
-    MESHLETS
+    MESHLETS,
+    MESHLET_BOUNDS
 //    MVP
 };
 class MeshletModel {
@@ -41,6 +50,8 @@ private:
     std::vector<unsigned char> meshlet_triangles;
 
     unsigned int taskShaderCount{0};
+
+    std::vector<bounds_struct> meshletBounds;
 };
 
 

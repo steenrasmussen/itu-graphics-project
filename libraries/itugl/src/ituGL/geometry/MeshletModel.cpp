@@ -9,6 +9,8 @@
 #include "glm/vec4.hpp"
 #include "assimp/scene.h"
 #include "glad/glad.h"
+#include "glm/vec3.hpp"
+#include "glm/geometric.hpp"
 
 MeshletModel::MeshletModel() {
     generateMeshlets();
@@ -22,9 +24,9 @@ void MeshletModel::Draw() {
 
 void MeshletModel::generateMeshlets() {
     Assimp::Importer importer;
-    const aiScene* scene = importer.ReadFile("models/mill/Mill.obj", aiProcess_CalcTangentSpace | aiProcess_GenNormals | aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_SortByPType);
+    const aiScene* scene = importer.ReadFile("models/dragon/dragon.obj", aiProcess_CalcTangentSpace | aiProcess_GenNormals | aiProcess_Triangulate | aiProcess_JoinIdenticalVertices | aiProcess_SortByPType);
 
-    aiMesh *mesh = scene->mMeshes[2];
+    aiMesh *mesh = scene->mMeshes[0];
 
     std::vector<unsigned int> indices;
     for (unsigned int faceIndex = 0; faceIndex < mesh->mNumFaces; faceIndex++) {
@@ -56,20 +58,23 @@ void MeshletModel::generateMeshlets() {
     meshlet_triangles.resize(last.triangle_offset + ((last.triangle_count * 3 + 3) & ~3));
     meshlets.resize(meshletCount);
 
-    // Something seems off with the bounds or ?
-    std::vector<meshopt_Bounds> bounds;
     for (const meshopt_Meshlet & m : meshlets) {
         meshopt_optimizeMeshlet(&meshlet_vertices[m.vertex_offset], &meshlet_triangles[m.triangle_offset], m.triangle_count, m.vertex_count);
 
-        meshopt_Bounds meshletBounds = meshopt_computeMeshletBounds(&meshlet_vertices[m.vertex_offset], &meshlet_triangles[m.triangle_offset],
+        meshopt_Bounds bounds = meshopt_computeMeshletBounds(&meshlet_vertices[m.vertex_offset], &meshlet_triangles[m.triangle_offset],
                                                                     m.triangle_count, &vertices[0].x, vertices.size(), sizeof(glm::vec4));
-        bounds.push_back(meshletBounds);
+        bounds_struct b = {};
+        b.center = glm::vec3(bounds.center[0], bounds.center[1], bounds.center[2]);
+        b.radius = bounds.radius;
+        b.normal = glm::vec3(bounds.cone_axis[0], bounds.cone_axis[1], bounds.cone_axis[2]);
+        b.angle = bounds.cone_cutoff;
+        meshletBounds.push_back(b);
     }
 }
 
 void MeshletModel::initializeBuffers() {
-    GLuint buffer[4];
-    glGenBuffers(4, buffer);
+    GLuint buffer[5];
+    glGenBuffers(5, buffer);
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer[BufferIndex::VERTICES]);
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(glm::vec4) * vertices.size(), &vertices[0],  GL_STATIC_READ);
@@ -86,4 +91,8 @@ void MeshletModel::initializeBuffers() {
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer[BufferIndex::MESHLETS]);
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(meshopt_Meshlet) * meshlets.size(), &meshlets[0],  GL_STATIC_READ);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BufferIndex::MESHLETS, buffer[BufferIndex::MESHLETS]);
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer[BufferIndex::MESHLET_BOUNDS]);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(bounds_struct) * meshletBounds.size(), &meshletBounds[0],  GL_STATIC_READ);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BufferIndex::MESHLET_BOUNDS, buffer[BufferIndex::MESHLET_BOUNDS]);
 }

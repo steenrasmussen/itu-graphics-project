@@ -14,7 +14,7 @@
 static bool freeze_camera{false};
 
 ProjectApplication::ProjectApplication()
-        : Application(1024, 1024, "Project"), m_cameraPosition(0, 30, 30), m_cameraTranslationSpeed(20.0f),
+        : Application(1024, 1024, "Project"), m_cameraPosition(0, 20, 20), m_cullingCameraPosition(0, 20, -20), m_cameraTranslationSpeed(20.0f),
           m_cameraRotationSpeed(0.5f), m_cameraEnabled(false), m_cameraEnablePressed(false),
           m_mousePosition(GetMainWindow().GetMousePosition(true)) {
 }
@@ -43,6 +43,11 @@ void ProjectApplication::Initialize() {
     InitializeMeshShaderPath();
 
     glEnable(GL_DEPTH_TEST);
+
+    // Debugging
+//    glEnable(GL_CULL_FACE);
+//    glCullFace(GL_BACK);
+//    glFrontFace(GL_CCW);
 }
 
 void ProjectApplication::Update() {
@@ -108,12 +113,15 @@ void ProjectApplication::InitializeMeshShaderPath() {
 
     m_model = MeshletModel();
 
+    shaderProgramPtr->Use();
+
     m_worldMatrixLocation = shaderProgramPtr->GetUniformLocation("WorldMatrix");
     m_viewProjMatrixLocation = shaderProgramPtr->GetUniformLocation("ViewProjMatrix");
+    m_cullingCameraPositionLocation = shaderProgramPtr->GetUniformLocation("CullingCameraPosition");
 
-    shaderProgramPtr->Use();
-    shaderProgramPtr->SetUniform(m_worldMatrixLocation, glm::scale(glm::vec3(0.1f)));
+    shaderProgramPtr->SetUniform(m_worldMatrixLocation, glm::scale(glm::vec3(10.f)));
     shaderProgramPtr->SetUniform(m_viewProjMatrixLocation, m_camera.GetViewProjectionMatrix());
+    shaderProgramPtr->SetUniform(m_cullingCameraPositionLocation, m_cameraPosition);
 }
 
 void ProjectApplication::UpdateCamera() {
@@ -160,6 +168,7 @@ void ProjectApplication::UpdateCamera() {
             inputTranslation *= 2.0f;
 
         m_cameraPosition += inputTranslation.x * viewRight + inputTranslation.y * viewForward;
+        shaderProgramPtr->SetUniform(m_cullingCameraPositionLocation, m_cameraPosition);
     }
 
 //     Update camera rotation
@@ -179,7 +188,6 @@ void ProjectApplication::UpdateCamera() {
 
     // Update view matrix
     m_camera.SetViewMatrix(m_cameraPosition, m_cameraPosition + viewForward);
-
     shaderProgramPtr->SetUniform(m_viewProjMatrixLocation, m_camera.GetViewProjectionMatrix());
 }
 
@@ -190,4 +198,7 @@ void ProjectApplication::InitializeCamera() {
     // Set perspective matrix
     float aspectRatio = GetMainWindow().GetAspectRatio();
     m_camera.SetPerspectiveProjectionMatrix(1.0f, aspectRatio, 0.1f, 1000.0f);
+
+    m_cullingCamera.SetViewMatrix(m_cullingCameraPosition, glm::vec3(0.0f));
+    m_cullingCamera.SetPerspectiveProjectionMatrix(1.0f, aspectRatio, 0.1f, 1000.0f);
 }

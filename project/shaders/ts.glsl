@@ -18,15 +18,45 @@ taskNV out Task
     uint meshletIndices[32];
 } OUT;
 
+uniform vec3 CullingCameraPosition;
+uniform mat4 WorldMatrix;
+
+struct mesletBounds
+{
+    vec3 center;
+    float radius;
+    vec3 normal;
+    float angle;
+};
+
+layout(std430, binding = 4) buffer MesletBoundsBuffer {
+    mesletBounds bounds[];
+} bb;
+
+bool coneCull(vec3 center, vec3 cone_axis, float cone_cutoff, vec3 camera_position)
+{
+    return dot(normalize(center - camera_position), cone_axis) >= cone_cutoff;
+}
+
 void main() {
     uint groupId = gl_WorkGroupID.x;
     uint threadId = gl_LocalInvocationID.x;
-
     uint meshletIndex = (groupId * 32) + threadId;
-    OUT.meshletIndices[threadId] = meshletIndex;
+
+    mesletBounds bounds = bb.bounds[meshletIndex];
+    vec4 center = WorldMatrix * vec4(bounds.center, 1.0f);
+    vec3 axis = mat3(WorldMatrix) * bounds.normal;
+    float cutOff = bounds.angle;
+    bool accept = !coneCull(center.xyz, axis, cutOff, CullingCameraPosition);
+
+    uvec4 ballot = subgroupBallot(accept);
+    uint index = subgroupBallotExclusiveBitCount(ballot);
+
+    if (accept) {
+        OUT.meshletIndices[index] = meshletIndex;
+    }
 
     if (threadId == 0) {
-        // TODO: We spawn to make workgroups for that last iteration
-        gl_TaskCountNV = 32;
+        gl_TaskCountNV = subgroupBallotBitCount(ballot);
     }
 }
