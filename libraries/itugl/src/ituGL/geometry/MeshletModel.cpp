@@ -1,7 +1,3 @@
-//
-// Created by steen on 09-05-2024.
-//
-
 #include "ituGL/geometry/MeshletModel.h"
 #include "assimp/Importer.hpp"
 #include "assimp/postprocess.h"
@@ -19,6 +15,7 @@ MeshletModel::MeshletModel() {
 }
 
 void MeshletModel::Draw() {
+    m_materials.front()->Use();
     glDrawMeshTasksNV(0, taskShaderCount);
 }
 
@@ -42,6 +39,13 @@ void MeshletModel::generateMeshlets() {
         vector.z = mesh->mVertices[vertexNo].z;
         vector.w = 1.0f;
         vertices.push_back(vector);
+
+        vector.x = mesh->mNormals[vertexNo].x;
+        vector.y = mesh->mNormals[vertexNo].y;
+        vector.z = mesh->mNormals[vertexNo].z;
+        vector.w = 1.0f;
+
+        vertices.push_back(vector);
     }
 
     const size_t maxMeshlets = meshopt_buildMeshletsBound(indices.size(), maxVertices, maxTriangles);
@@ -51,7 +55,7 @@ void MeshletModel::generateMeshlets() {
     meshlet_triangles.resize(maxMeshlets * maxTriangles * 3);
 
     size_t meshletCount = meshopt_buildMeshlets(meshlets.data(), meshlet_vertices.data(), meshlet_triangles.data(), indices.data(),
-                                                 indices.size(), &vertices[0].x, vertices.size(), sizeof(glm::vec4), maxVertices, maxTriangles, coneWeight);
+                                                 indices.size(), &vertices[0].x, vertices.size(), sizeof(glm::vec4) * 2, maxVertices, maxTriangles, coneWeight);
 
     const meshopt_Meshlet& last = meshlets[meshletCount - 1];
     meshlet_vertices.resize(last.vertex_offset + last.vertex_count);
@@ -62,7 +66,7 @@ void MeshletModel::generateMeshlets() {
         meshopt_optimizeMeshlet(&meshlet_vertices[m.vertex_offset], &meshlet_triangles[m.triangle_offset], m.triangle_count, m.vertex_count);
 
         meshopt_Bounds bounds = meshopt_computeMeshletBounds(&meshlet_vertices[m.vertex_offset], &meshlet_triangles[m.triangle_offset],
-                                                                    m.triangle_count, &vertices[0].x, vertices.size(), sizeof(glm::vec4));
+                                                                    m.triangle_count, &vertices[0].x, vertices.size(), sizeof(glm::vec4) * 2);
         bounds_struct b = {};
         b.center = glm::vec3(bounds.center[0], bounds.center[1], bounds.center[2]);
         b.radius = bounds.radius;
@@ -95,4 +99,8 @@ void MeshletModel::initializeBuffers() {
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer[BufferIndex::MESHLET_BOUNDS]);
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(bounds_struct) * meshletBounds.size(), &meshletBounds[0],  GL_STATIC_READ);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BufferIndex::MESHLET_BOUNDS, buffer[BufferIndex::MESHLET_BOUNDS]);
+}
+
+void MeshletModel::AddMaterial(const std::shared_ptr<Material>& material) {
+    m_materials.push_back(material);
 }

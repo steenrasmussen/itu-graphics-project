@@ -1,7 +1,3 @@
-//
-// Created by steen on 09-05-2024.
-//
-
 #ifndef ITU_GRAPHICS_PROGRAMMING_MESHLETMODEL_H
 #define ITU_GRAPHICS_PROGRAMMING_MESHLETMODEL_H
 
@@ -10,6 +6,7 @@
 #include "meshoptimizer.h"
 #include "glm/vec4.hpp"
 #include "glm/vec3.hpp"
+#include "ituGL/shader/Material.h"
 
 constexpr size_t maxVertices = 64;
 constexpr size_t maxTriangles = 124;
@@ -23,20 +20,20 @@ struct bounds_struct
     float angle;
 };
 
-
 enum BufferIndex {
     VERTICES = 0,
     MESHLET_VERTICES,
     MESHLET_TRIANGLES,
     MESHLETS,
     MESHLET_BOUNDS
-//    MVP
 };
+
 class MeshletModel {
 
 public:
     MeshletModel();
     void Draw();
+    void AddMaterial(const std::shared_ptr<Material>& material);
 
 private:
 
@@ -50,8 +47,8 @@ private:
     std::vector<unsigned char> meshlet_triangles;
 
     unsigned int taskShaderCount{0};
-
     std::vector<bounds_struct> meshletBounds;
+    std::vector<std::shared_ptr<Material>> m_materials;
 };
 
 

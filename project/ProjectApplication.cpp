@@ -10,26 +10,31 @@
 #include "ituGL/asset/Texture2DLoader.h"
 #include <glm/gtx/euler_angles.hpp>
 #include <glm/gtx/transform.hpp>
+#include "glm/vec4.hpp"
+#include "ituGL/shader/ShaderUniformCollection.h"
+#include "ituGL/shader/Material.h"
 
 static bool freeze_camera{false};
 
 ProjectApplication::ProjectApplication()
-        : Application(1024, 1024, "Project"), m_cameraPosition(0, 20, 20), m_cullingCameraPosition(0, 20, -20), m_cameraTranslationSpeed(20.0f),
+        : Application(1024, 1024, "Project"), m_cameraPosition(0, 25, 25), m_cameraTranslationSpeed(20.0f),
           m_cameraRotationSpeed(0.5f), m_cameraEnabled(false), m_cameraEnablePressed(false),
-          m_mousePosition(GetMainWindow().GetMousePosition(true)) {
+          m_mousePosition(GetMainWindow().GetMousePosition(true)), m_ambientColor(0.0f), m_lightColor(0.0f),
+          m_lightIntensity(0.0f), m_lightPosition(0.0f), m_specularExponent(100.0f) {
 }
 
 void ProjectApplication::Initialize() {
     Application::Initialize();
 
     InitializeCamera();
+    InitializeLights();
+    InitializeMeshShaderPath();
 
     m_imGui.Initialize(GetMainWindow());
 
     m_gpuInfo.vendor = reinterpret_cast< char const * >(glGetString(GL_VENDOR));
     m_gpuInfo.renderer = reinterpret_cast< char const * >(glGetString(GL_RENDERER));
     m_gpuInfo.version = reinterpret_cast< char const * >(glGetString(GL_VERSION));
-
     m_isMeshShadersSupported = GLAD_GL_NV_mesh_shader != 0;
 
     if (m_isMeshShadersSupported) {
@@ -40,18 +45,19 @@ void ProjectApplication::Initialize() {
         glGetIntegeri_v(GL_MAX_MESH_WORK_GROUP_SIZE_NV, 0, &meshShaderProperties.maxWorkGroupSize);
     }
 
-    InitializeMeshShaderPath();
-
     glEnable(GL_DEPTH_TEST);
-
-    // Debugging
-//    glEnable(GL_CULL_FACE);
-//    glCullFace(GL_BACK);
-//    glFrontFace(GL_CCW);
 }
 
 void ProjectApplication::Update() {
     Application::Update();
+
+    if (!freeze_camera) {
+        m_debugCullingEnabled = false;
+    } else if (!m_debugCullingEnabled) {
+        m_cullingViewProjMatrix = m_camera.GetViewProjectionMatrix();
+        m_cullingCameraPosition = m_cameraPosition;
+        m_debugCullingEnabled = true;
+    }
 
     // Update camera controller
     UpdateCamera();
@@ -83,13 +89,23 @@ void ProjectApplication::RenderGUI() {
     ImGui::Text("Version: %s", m_gpuInfo.version.c_str());
 
     ImGui::Text("Mesh shaders supported: %s", m_isMeshShadersSupported ? "Yes" : "No");
+    ImGui::InputFloat3("Camera position", &m_cameraPosition[0]);
 
     if (m_isMeshShadersSupported) {
         ImGui::Text("Max number of output vertices: %d", meshShaderProperties.maxOutputVertices);
         ImGui::Text("Max number of output primitives: %d", meshShaderProperties.maxOutputPrimitives);
-        ImGui::Text("Max Work Group size: %d", meshShaderProperties.maxWorkGroupSize);\
+        ImGui::Text("Max Work Group size: %d", meshShaderProperties.maxWorkGroupSize);
         ImGui::Checkbox("Freeze camera", &freeze_camera);
     }
+
+    // Add debug controls for light properties
+    ImGui::ColorEdit3("Ambient color", &m_ambientColor[0]);
+    ImGui::Separator();
+    ImGui::DragFloat3("Light position", &m_lightPosition[0], 0.1f);
+    ImGui::ColorEdit3("Light color", &m_lightColor[0]);
+    ImGui::DragFloat("Light intensity", &m_lightIntensity, 0.05f, 0.0f, 100.0f);
+    ImGui::Separator();
+    ImGui::DragFloat("Specular exponent", &m_specularExponent, 1.0f, 0.0f, 1000.0f);
 
     m_imGui.EndFrame();
 }
@@ -108,20 +124,51 @@ void ProjectApplication::InitializeMeshShaderPath() {
     fragmentShaderPaths.push_back("shaders/fs.glsl");
     Shader fragmentShader = ShaderLoader(Shader::FragmentShader).Load(fragmentShaderPaths);
 
-    shaderProgramPtr = std::make_shared<ShaderProgram>();
-    shaderProgramPtr->BuildTaskMeshProgram(taskShader, meshShader, fragmentShader);
+    shaderProgram = std::make_shared<ShaderProgram>();
+    shaderProgram->BuildTaskMeshProgram(taskShader, meshShader, fragmentShader);
 
-    m_model = MeshletModel();
+    ShaderUniformCollection::NameSet filteredUniforms;
+    filteredUniforms.insert("WorldMatrix");
+    filteredUniforms.insert("ViewProjMatrix");
+    filteredUniforms.insert("AmbientColor");
+    filteredUniforms.insert("LightColor");
 
-    shaderProgramPtr->Use();
+    // Create reference material
+    std::shared_ptr<Material> material = std::make_shared<Material>(shaderProgram, filteredUniforms);
+    material->SetUniformValue("AmbientReflection", 1.0f);
+    material->SetUniformValue("DiffuseReflection", 1.0f);
+    material->SetUniformValue("SpecularReflection", 1.0f);
+    material->SetUniformValue("SpecularExponent", 100.0f);
 
-    m_worldMatrixLocation = shaderProgramPtr->GetUniformLocation("WorldMatrix");
-    m_viewProjMatrixLocation = shaderProgramPtr->GetUniformLocation("ViewProjMatrix");
-    m_cullingCameraPositionLocation = shaderProgramPtr->GetUniformLocation("CullingCameraPosition");
+    ShaderProgram::Location worldMatrixLocation = shaderProgram->GetUniformLocation("WorldMatrix");
+    ShaderProgram::Location viewProjMatrixLocation = shaderProgram->GetUniformLocation("ViewProjMatrix");
+    ShaderProgram::Location cullingViewProjMatrixLocation = shaderProgram->GetUniformLocation("CullingViewProjMatrix");
+    ShaderProgram::Location cullingCameraPositionLocation = shaderProgram->GetUniformLocation("CullingCameraPosition");
+    ShaderProgram::Location ambientColorLocation = shaderProgram->GetUniformLocation("AmbientColor");
+    ShaderProgram::Location lightColorLocation = shaderProgram->GetUniformLocation("LightColor");
+    ShaderProgram::Location lightPositionLocation = shaderProgram->GetUniformLocation("LightPosition");
+    ShaderProgram::Location cameraPositionLocation = shaderProgram->GetUniformLocation("CameraPosition");
 
-    shaderProgramPtr->SetUniform(m_worldMatrixLocation, glm::scale(glm::vec3(10.f)));
-    shaderProgramPtr->SetUniform(m_viewProjMatrixLocation, m_camera.GetViewProjectionMatrix());
-    shaderProgramPtr->SetUniform(m_cullingCameraPositionLocation, m_cameraPosition);
+    material->SetShaderSetupFunction([=](ShaderProgram &shaderProgram) {
+        shaderProgram.SetUniform(worldMatrixLocation, glm::scale(glm::vec3(10.f)));
+        shaderProgram.SetUniform(viewProjMatrixLocation, m_camera.GetViewProjectionMatrix());
+
+        if (m_debugCullingEnabled) {
+            shaderProgram.SetUniform(cullingViewProjMatrixLocation, m_cullingViewProjMatrix);
+            shaderProgram.SetUniform(cullingCameraPositionLocation, m_cullingCameraPosition);
+        } else {
+            shaderProgram.SetUniform(cullingViewProjMatrixLocation, m_camera.GetViewProjectionMatrix());
+            shaderProgram.SetUniform(cullingCameraPositionLocation, m_cameraPosition);
+        }
+
+        // Set camera and light uniforms
+        shaderProgram.SetUniform(ambientColorLocation, m_ambientColor);
+        shaderProgram.SetUniform(lightColorLocation, m_lightColor * m_lightIntensity);
+        shaderProgram.SetUniform(lightPositionLocation, m_lightPosition);
+        shaderProgram.SetUniform(cameraPositionLocation, m_cameraPosition);
+    });
+
+    m_model.AddMaterial(material);
 }
 
 void ProjectApplication::UpdateCamera() {
@@ -168,7 +215,6 @@ void ProjectApplication::UpdateCamera() {
             inputTranslation *= 2.0f;
 
         m_cameraPosition += inputTranslation.x * viewRight + inputTranslation.y * viewForward;
-        shaderProgramPtr->SetUniform(m_cullingCameraPositionLocation, m_cameraPosition);
     }
 
 //     Update camera rotation
@@ -188,7 +234,6 @@ void ProjectApplication::UpdateCamera() {
 
     // Update view matrix
     m_camera.SetViewMatrix(m_cameraPosition, m_cameraPosition + viewForward);
-    shaderProgramPtr->SetUniform(m_viewProjMatrixLocation, m_camera.GetViewProjectionMatrix());
 }
 
 void ProjectApplication::InitializeCamera() {
@@ -198,7 +243,11 @@ void ProjectApplication::InitializeCamera() {
     // Set perspective matrix
     float aspectRatio = GetMainWindow().GetAspectRatio();
     m_camera.SetPerspectiveProjectionMatrix(1.0f, aspectRatio, 0.1f, 1000.0f);
+}
 
-    m_cullingCamera.SetViewMatrix(m_cullingCameraPosition, glm::vec3(0.0f));
-    m_cullingCamera.SetPerspectiveProjectionMatrix(1.0f, aspectRatio, 0.1f, 1000.0f);
+void ProjectApplication::InitializeLights() {
+    m_ambientColor = glm::vec3(0.25f);
+    m_lightColor = glm::vec3(1.0f);
+    m_lightIntensity = 0.7f;
+    m_lightPosition = glm::vec3(-10.0f, 20.0f, 10.0f);
 }

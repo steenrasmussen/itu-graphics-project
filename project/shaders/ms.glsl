@@ -11,6 +11,7 @@ taskNV in Task {
 
 struct Vertex {
     vec4 position;
+    vec4 normal;
 };
 
 layout(std430, binding = 0) buffer VertexBuffer {
@@ -41,9 +42,11 @@ layout (std430, binding = 3) buffer MeshletBuffer
 uniform mat4 WorldMatrix;
 uniform mat4 ViewProjMatrix;
 
-layout (location = 0) out PerVertexData
+out PerVertexData
 {
-    vec4 color;
+    vec3 WorldPosition;
+    vec3 WorldNormal;
+    vec3 Color;
 } v_out[];
 
 #define MAX_COLORS 10
@@ -54,10 +57,10 @@ vec3 meshletcolors[MAX_COLORS] = {
     vec3(1,1,0),
     vec3(1,0,1),
     vec3(0,1,1),
-    vec3(1,0.5,0),
-    vec3(0.5,1,0),
-    vec3(0,0.5,1),
-    vec3(0.8,0.8,0.8)
+    vec3(0.5,0,0),
+    vec3(0,0.5,0),
+    vec3(0,0.0,0.5),
+    vec3(0.5,0.5,0.5)
 };
 
 void main() {
@@ -72,7 +75,9 @@ void main() {
     for (uint i = threadId; i < meshlet.vertexCount; i += 32) {
         uint position = vi.vertices[meshlet.vertexOffset + i];
         gl_MeshVerticesNV[i].gl_Position = ViewProjMatrix * WorldMatrix * vb.vertices[position].position;
-        v_out[i].color = vec4(meshletcolors[groupId % MAX_COLORS], 1.0);
+        v_out[i].WorldPosition = (WorldMatrix * vb.vertices[position].position).xyz;
+        v_out[i].WorldNormal = (WorldMatrix * vb.vertices[position].normal).xyz;
+        v_out[i].Color = meshletcolors[meshletIndex % MAX_COLORS];
     }
 
     uint indexCount = (meshlet.triangleCount * 3 + 3) / 4;

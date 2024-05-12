@@ -20,10 +20,6 @@ struct MeshShaderPropterties {
     GLint maxOutputPrimitives;
     GLint maxWorkGroupSize;
 };
-struct Matricies {
-    glm::mat4 ViewProjectionMatrix;
-    glm::mat4 ModelMatrix;
-};
 
 class ProjectApplication : public Application {
 public:
@@ -42,6 +38,7 @@ protected:
 
 private:
     void InitializeCamera();
+    void InitializeLights();
 
     void UpdateCamera();
 
@@ -58,7 +55,7 @@ private:
     bool m_isMeshShadersSupported{};
     MeshShaderPropterties meshShaderProperties = {};
 
-    std::shared_ptr<ShaderProgram> shaderProgramPtr;
+    std::shared_ptr<ShaderProgram> shaderProgram;
 
     // Camera controller parameters
     Camera m_camera;
@@ -69,13 +66,19 @@ private:
     bool m_cameraEnablePressed;
 
     MeshletModel m_model;
-    ShaderProgram::Location m_worldMatrixLocation{-1};
-    ShaderProgram::Location m_viewProjMatrixLocation{-1};
 
-    ShaderProgram::Location m_cullingCameraPositionLocation{-1};
+    bool m_debugCullingEnabled{false};
+    glm::vec3 m_cullingCameraPosition{0.0f};
+    glm::mat4 m_cullingViewProjMatrix{1.0f};
 
-    Camera m_cullingCamera;
-    glm::vec3 m_cullingCameraPosition;
+    // Add light variables
+    glm::vec3 m_ambientColor;
+    glm::vec3 m_lightColor;
+    float m_lightIntensity;
+    glm::vec3 m_lightPosition;
+
+    // Specular exponent debug
+    float m_specularExponent;
 };
 
 
