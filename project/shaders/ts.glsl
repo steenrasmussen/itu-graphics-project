@@ -5,14 +5,6 @@
 
 layout(local_size_x = 32) in;
 
-struct Meshlet
-{
-    uint vertexOffset;
-    uint triangleOffset;
-    uint vertexCount;
-    uint triangleCount;
-};
-
 taskNV out Task
 {
     uint meshletIndices[32];
@@ -23,6 +15,8 @@ uniform mat4 ViewProjMatrix;
 
 uniform vec3 CullingCameraPosition;
 uniform mat4 CullingViewProjMatrix;
+
+uniform uint MeshletCount;
 
 struct mesletBounds
 {
@@ -71,20 +65,24 @@ void main() {
     uint threadId = gl_LocalInvocationID.x;
     uint meshletIndex = (groupId * 32) + threadId;
 
-    mesletBounds bounds = bb.bounds[meshletIndex];
-    vec4 center = WorldMatrix * vec4(bounds.center, 1.0f);
-    float radius = bounds.radius;
+    bool accept = false;
 
-    // Frustum culling
-    vec4 planes[6] = extractFrustumPlanes(CullingViewProjMatrix);
-    bool frustumVisible = sphereInFrustum(planes, center.xyz, radius);
+    if (meshletIndex < MeshletCount) {
+        mesletBounds bounds = bb.bounds[meshletIndex];
+        vec4 center = WorldMatrix * vec4(bounds.center, 1.0f);
+        float radius = bounds.radius;
 
-    // Backface culling
-    vec3 axis = mat3(WorldMatrix) * bounds.normal;
-    float cutOff = bounds.angle;
-    bool isFrontFacing = !coneCull(center.xyz, axis, cutOff, CullingCameraPosition);
+        // Frustum culling
+        vec4 planes[6] = extractFrustumPlanes(CullingViewProjMatrix);
+        bool frustumVisible = sphereInFrustum(planes, center.xyz, radius);
 
-    bool accept = frustumVisible && isFrontFacing;
+        // Backface culling
+        vec3 axis = mat3(WorldMatrix) * bounds.normal;
+        float cutOff = bounds.angle;
+        bool isFrontFacing = !coneCull(center.xyz, axis, cutOff, CullingCameraPosition);
+
+        accept = frustumVisible && isFrontFacing;
+    }
 
     uvec4 ballot = subgroupBallot(accept);
     uint index = subgroupBallotExclusiveBitCount(ballot);

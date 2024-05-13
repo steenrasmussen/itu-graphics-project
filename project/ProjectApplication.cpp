@@ -148,10 +148,12 @@ void ProjectApplication::InitializeMeshShaderPath() {
     ShaderProgram::Location lightColorLocation = shaderProgram->GetUniformLocation("LightColor");
     ShaderProgram::Location lightPositionLocation = shaderProgram->GetUniformLocation("LightPosition");
     ShaderProgram::Location cameraPositionLocation = shaderProgram->GetUniformLocation("CameraPosition");
+    ShaderProgram::Location meshletCountLocation = shaderProgram->GetUniformLocation("MeshletCount");
 
     material->SetShaderSetupFunction([=](ShaderProgram &shaderProgram) {
         shaderProgram.SetUniform(worldMatrixLocation, glm::scale(glm::vec3(10.f)));
         shaderProgram.SetUniform(viewProjMatrixLocation, m_camera.GetViewProjectionMatrix());
+        shaderProgram.SetUniform(meshletCountLocation, m_model.GetMeshletCount());
 
         if (m_debugCullingEnabled) {
             shaderProgram.SetUniform(cullingViewProjMatrixLocation, m_cullingViewProjMatrix);

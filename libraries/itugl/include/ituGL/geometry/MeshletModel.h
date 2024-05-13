@@ -34,6 +34,7 @@ public:
     MeshletModel();
     void Draw();
     void AddMaterial(const std::shared_ptr<Material>& material);
+    [[nodiscard]] unsigned int GetMeshletCount() const;
 
 private:
 

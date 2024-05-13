@@ -141,8 +141,8 @@ ShaderProgram::Location ShaderProgram::GetAttributeLocation(const char* name) co
 // Find a uniform location by name
 ShaderProgram::Location ShaderProgram::GetUniformLocation(const char* name) const
 {
-//    assert(IsValid());
-//    assert(IsLinked());
+    assert(IsValid());
+    assert(IsLinked());
     return glGetUniformLocation(GetHandle(), name);
 }
 

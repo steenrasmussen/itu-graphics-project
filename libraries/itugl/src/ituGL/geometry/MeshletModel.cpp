@@ -11,7 +11,7 @@
 MeshletModel::MeshletModel() {
     generateMeshlets();
     initializeBuffers();
-    taskShaderCount = ceil(meshlets.size() / static_cast<float>(32));
+    taskShaderCount = meshlets.size() + 31 / 32;
 }
 
 void MeshletModel::Draw() {
@@ -103,4 +103,8 @@ void MeshletModel::initializeBuffers() {
 
 void MeshletModel::AddMaterial(const std::shared_ptr<Material>& material) {
     m_materials.push_back(material);
+}
+
+unsigned int MeshletModel::GetMeshletCount() const {
+    return meshlets.size();
 }
