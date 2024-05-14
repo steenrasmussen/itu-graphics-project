@@ -21,6 +21,10 @@ ProjectApplication::ProjectApplication()
           m_cameraRotationSpeed(0.5f), m_cameraEnabled(false), m_cameraEnablePressed(false),
           m_mousePosition(GetMainWindow().GetMousePosition(true)), m_ambientColor(0.0f), m_lightColor(0.0f),
           m_lightIntensity(0.0f), m_lightPosition(0.0f), m_specularExponent(100.0f) {
+    m_isMeshShadersSupported = false;//GLAD_GL_NV_mesh_shader != 0;
+    if (!m_isMeshShadersSupported) {
+        Terminate(-3, "This application requires a NVIDIA GPU with support for Mesh Shaders");
+    }
 }
 
 void ProjectApplication::Initialize() {
@@ -35,7 +39,6 @@ void ProjectApplication::Initialize() {
     m_gpuInfo.vendor = reinterpret_cast< char const * >(glGetString(GL_VENDOR));
     m_gpuInfo.renderer = reinterpret_cast< char const * >(glGetString(GL_RENDERER));
     m_gpuInfo.version = reinterpret_cast< char const * >(glGetString(GL_VERSION));
-    m_isMeshShadersSupported = GLAD_GL_NV_mesh_shader != 0;
 
     if (m_isMeshShadersSupported) {
         // Max number of vertices that a mesh shader can output
