@@ -30,6 +30,12 @@ layout(std430, binding = 4) buffer MesletBoundsBuffer {
     mesletBounds bounds[];
 } bb;
 
+layout (std430, binding = 5) buffer VisibleMeshletBuffer
+{
+    uint accepted[];
+} vmb;
+
+
 bool coneCull(vec3 center, vec3 cone_axis, float cone_cutoff, vec3 camera_position)
 {
     return dot(normalize(center - camera_position), cone_axis) >= cone_cutoff;
@@ -93,5 +99,6 @@ void main() {
 
     if (threadId == 0) {
         gl_TaskCountNV = subgroupBallotBitCount(ballot);
+        vmb.accepted[groupId] = uint(subgroupBallotBitCount(ballot));
     }
 }

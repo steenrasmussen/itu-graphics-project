@@ -1,3 +1,4 @@
+#include <iostream>
 #include "ituGL/geometry/MeshletModel.h"
 #include "assimp/Importer.hpp"
 #include "assimp/postprocess.h"
@@ -6,17 +7,26 @@
 #include "assimp/scene.h"
 #include "glad/glad.h"
 #include "glm/vec3.hpp"
-#include "glm/geometric.hpp"
 
 MeshletModel::MeshletModel() {
     generateMeshlets();
+    taskShaderCount = (meshlets.size() + 31) / 32;
     initializeBuffers();
-    taskShaderCount = meshlets.size() + 31 / 32;
 }
 
 void MeshletModel::Draw() {
     m_materials.front()->Use();
+
     glDrawMeshTasksNV(0, taskShaderCount);
+    glMemoryBarrier(GL_SHADER_STORAGE_BARRIER_BIT);
+
+    m_visibleMeshletCount = 0;
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, meshletVisibleBuffer);
+    auto* data = (unsigned int*)glMapBuffer(GL_SHADER_STORAGE_BUFFER, GL_READ_ONLY);
+    for (int i = 0; i < taskShaderCount; ++i) {
+        m_visibleMeshletCount += data[i];
+    }
+    glUnmapBuffer(GL_SHADER_STORAGE_BUFFER);
 }
 
 void MeshletModel::generateMeshlets() {
@@ -77,8 +87,8 @@ void MeshletModel::generateMeshlets() {
 }
 
 void MeshletModel::initializeBuffers() {
-    GLuint buffer[5];
-    glGenBuffers(5, buffer);
+    GLuint buffer[6];
+    glGenBuffers(6, buffer);
 
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer[BufferIndex::VERTICES]);
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(glm::vec4) * vertices.size(), &vertices[0],  GL_STATIC_READ);
@@ -99,6 +109,11 @@ void MeshletModel::initializeBuffers() {
     glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer[BufferIndex::MESHLET_BOUNDS]);
     glBufferData(GL_SHADER_STORAGE_BUFFER, sizeof(bounds_struct) * meshletBounds.size(), &meshletBounds[0],  GL_STATIC_READ);
     glBindBufferBase(GL_SHADER_STORAGE_BUFFER, BufferIndex::MESHLET_BOUNDS, buffer[BufferIndex::MESHLET_BOUNDS]);
+
+    glBindBuffer(GL_SHADER_STORAGE_BUFFER, buffer[BufferIndex::MESHLET_VISIBLE]);
+    glBufferData(GL_SHADER_STORAGE_BUFFER, taskShaderCount * sizeof(unsigned int), nullptr, GL_DYNAMIC_DRAW);
+    glBindBufferBase(GL_SHADER_STORAGE_BUFFER, MESHLET_VISIBLE, buffer[BufferIndex::MESHLET_VISIBLE]);
+    meshletVisibleBuffer = buffer[MESHLET_VISIBLE];
 }
 
 void MeshletModel::AddMaterial(const std::shared_ptr<Material>& material) {
@@ -107,4 +122,8 @@ void MeshletModel::AddMaterial(const std::shared_ptr<Material>& material) {
 
 unsigned int MeshletModel::GetMeshletCount() const {
     return meshlets.size();
+}
+
+unsigned int MeshletModel::GetVisibleMeshletCount() const {
+    return m_visibleMeshletCount;
 }

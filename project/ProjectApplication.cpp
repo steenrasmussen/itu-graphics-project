@@ -84,28 +84,28 @@ void ProjectApplication::Cleanup() {
 void ProjectApplication::RenderGUI() {
     m_imGui.BeginFrame();
 
-    ImGui::Text("Vendor: %s", m_gpuInfo.vendor.c_str());
-    ImGui::Text("Renderer: %s", m_gpuInfo.renderer.c_str());
-    ImGui::Text("Version: %s", m_gpuInfo.version.c_str());
+    ImGui::Checkbox("Freeze camera", &freeze_camera);
+    ImGui::Spacing();
+    ImGui::Text("Total meshlets: %d", m_model.GetMeshletCount());
+    ImGui::Text("Visible meshlets: %d", m_model.GetVisibleMeshletCount());
+    ImGui::Spacing();
 
-    ImGui::Text("Mesh shaders supported: %s", m_isMeshShadersSupported ? "Yes" : "No");
-    ImGui::InputFloat3("Camera position", &m_cameraPosition[0]);
-
-    if (m_isMeshShadersSupported) {
-        ImGui::Text("Max number of output vertices: %d", meshShaderProperties.maxOutputVertices);
-        ImGui::Text("Max number of output primitives: %d", meshShaderProperties.maxOutputPrimitives);
-        ImGui::Text("Max Work Group size: %d", meshShaderProperties.maxWorkGroupSize);
-        ImGui::Checkbox("Freeze camera", &freeze_camera);
+    if (ImGui::CollapsingHeader("GPU info")) {
+        ImGui::Text("Vendor: %s", m_gpuInfo.vendor.c_str());
+        ImGui::Text("Renderer: %s", m_gpuInfo.renderer.c_str());
+        ImGui::Text("Version: %s", m_gpuInfo.version.c_str());
     }
 
-    // Add debug controls for light properties
-    ImGui::ColorEdit3("Ambient color", &m_ambientColor[0]);
-    ImGui::Separator();
-    ImGui::DragFloat3("Light position", &m_lightPosition[0], 0.1f);
-    ImGui::ColorEdit3("Light color", &m_lightColor[0]);
-    ImGui::DragFloat("Light intensity", &m_lightIntensity, 0.05f, 0.0f, 100.0f);
-    ImGui::Separator();
-    ImGui::DragFloat("Specular exponent", &m_specularExponent, 1.0f, 0.0f, 1000.0f);
+    if (ImGui::CollapsingHeader("Lighting")) {
+        // Add debug controls for light properties
+        ImGui::ColorEdit3("Ambient color", &m_ambientColor[0]);
+        ImGui::Separator();
+        ImGui::DragFloat3("Light position", &m_lightPosition[0], 0.1f);
+        ImGui::ColorEdit3("Light color", &m_lightColor[0]);
+        ImGui::DragFloat("Light intensity", &m_lightIntensity, 0.05f, 0.0f, 100.0f);
+        ImGui::Separator();
+        ImGui::DragFloat("Specular exponent", &m_specularExponent, 1.0f, 0.0f, 1000.0f);
+    }
 
     m_imGui.EndFrame();
 }

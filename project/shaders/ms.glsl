@@ -71,7 +71,6 @@ void main() {
     uint meshletIndex = IN.meshletIndices[groupId];
     Meshlet meshlet = mb.meshlets[meshletIndex];
 
-    // Write up to two vertices
     for (uint i = threadId; i < meshlet.vertexCount; i += 32) {
         uint position = vi.vertices[meshlet.vertexOffset + i];
         gl_MeshVerticesNV[i].gl_Position = ViewProjMatrix * WorldMatrix * vb.vertices[position].position;

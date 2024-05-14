@@ -25,7 +25,8 @@ enum BufferIndex {
     MESHLET_VERTICES,
     MESHLET_TRIANGLES,
     MESHLETS,
-    MESHLET_BOUNDS
+    MESHLET_BOUNDS,
+    MESHLET_VISIBLE
 };
 
 class MeshletModel {
@@ -35,6 +36,7 @@ public:
     void Draw();
     void AddMaterial(const std::shared_ptr<Material>& material);
     [[nodiscard]] unsigned int GetMeshletCount() const;
+    [[nodiscard]] unsigned int GetVisibleMeshletCount() const;
 
 private:
 
@@ -50,6 +52,9 @@ private:
     unsigned int taskShaderCount{0};
     std::vector<bounds_struct> meshletBounds;
     std::vector<std::shared_ptr<Material>> m_materials;
+
+    GLuint meshletVisibleBuffer;
+    unsigned int m_visibleMeshletCount;
 };
 
 
