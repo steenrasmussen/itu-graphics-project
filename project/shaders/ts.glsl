@@ -76,7 +76,7 @@ void main() {
     if (meshletIndex < MeshletCount) {
         mesletBounds bounds = bb.bounds[meshletIndex];
         vec4 center = WorldMatrix * vec4(bounds.center, 1.0f);
-        float radius = bounds.radius;
+        float radius = 5 * bounds.radius;
 
         // Frustum culling
         vec4 planes[6] = extractFrustumPlanes(CullingViewProjMatrix);
